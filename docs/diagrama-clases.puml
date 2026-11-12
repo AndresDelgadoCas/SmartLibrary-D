@@ -1,0 +1,94 @@
+@startuml
+skinparam classAttributeIconSize 0
+title SmartLibrary - Diagrama de clases por capas
+
+package "controller" {
+  class PrestamoController {
+    - prestamoService: PrestamoService
+    + registrarPrestamo(request: PrestamoRequest): ResponseEntity<PrestamoResponse>
+    + consultarPrestamos(): ResponseEntity<List<PrestamoResponse>>
+    + consultarPrestamoPorId(id: Long): ResponseEntity<PrestamoResponse>
+  }
+}
+
+package "service" {
+  class PrestamoService {
+    - prestamoRepository: PrestamoRepository
+    - libroRepository: LibroRepository
+    - estudianteRepository: EstudianteRepository
+    + registrarPrestamo(request: PrestamoRequest): PrestamoResponse
+    + consultarPrestamos(): List<PrestamoResponse>
+    + consultarPrestamoPorId(id: Long): PrestamoResponse
+  }
+}
+
+package "repository" {
+  interface PrestamoRepository
+  interface LibroRepository
+  interface EstudianteRepository
+}
+
+package "dto" {
+  class PrestamoRequest {
+    + estudianteId: Long
+    + libroId: Long
+  }
+  class PrestamoResponse {
+    + id: Long
+    + estudianteId: Long
+    + nombreEstudiante: String
+    + libroId: Long
+    + tituloLibro: String
+    + fechaPrestamo: LocalDate
+    + fechaDevolucion: LocalDate
+  }
+}
+
+package "model" {
+  class Estudiante {
+    - id: Long
+    - nombre: String
+    - identificacion: String
+  }
+  class Libro {
+    - id: Long
+    - titulo: String
+    - autor: String
+    - disponible: boolean
+    - version: Long
+    + marcarComoPrestado(): void
+    + marcarComoDisponible(): void
+  }
+  class Prestamo {
+    - id: Long
+    - fechaPrestamo: LocalDate
+    - fechaDevolucion: LocalDate
+  }
+}
+
+PrestamoController --> PrestamoService : usa
+PrestamoService --> PrestamoRepository : usa
+PrestamoService --> LibroRepository : usa
+PrestamoService --> EstudianteRepository : usa
+PrestamoController ..> PrestamoRequest : recibe
+PrestamoController ..> PrestamoResponse : devuelve
+PrestamoService ..> PrestamoRequest : recibe
+PrestamoService ..> PrestamoResponse : crea
+
+PrestamoRepository ..> Prestamo : JpaRepository<Prestamo, Long>
+LibroRepository ..> Libro : JpaRepository<Libro, Long>
+EstudianteRepository ..> Estudiante : JpaRepository<Estudiante, Long>
+
+Estudiante "1" <-- "0..*" Prestamo : corresponde a
+Libro "1" <-- "0..*" Prestamo : corresponde a
+
+note right of Libro
+  Un libro puede tener muchos
+  préstamos históricos, pero
+  solo uno activo a la vez.
+end note
+note bottom of Prestamo
+  fechaDevolucion = null
+  representa un préstamo activo.
+end note
+@enduml

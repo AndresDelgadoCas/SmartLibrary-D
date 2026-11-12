@@ -1,0 +1,36 @@
+@startuml
+title SmartLibrary - Registrar préstamo
+actor Usuario
+participant PrestamoController
+participant PrestamoService
+participant EstudianteRepository
+participant LibroRepository
+participant PrestamoRepository
+
+Usuario -> PrestamoController: POST /api/prestamos(request)
+PrestamoController -> PrestamoService: registrarPrestamo(request)
+PrestamoService -> EstudianteRepository: findById(estudianteId)
+EstudianteRepository --> PrestamoService: estudiante
+
+PrestamoService -> LibroRepository: findById(libroId)
+LibroRepository --> PrestamoService: libro
+
+PrestamoService -> PrestamoRepository: existsByLibroIdAndFechaDevolucionIsNull(libroId)
+PrestamoRepository --> PrestamoService: existeActivo?
+
+alt estudiante o libro inexistente
+  PrestamoService --> PrestamoController: ResourceNotFoundException
+  PrestamoController --> Usuario: 404 Not Found
+else libro no disponible o préstamo activo
+  PrestamoService --> PrestamoController: BusinessConflictException
+  PrestamoController --> Usuario: 409 Conflict
+else préstamo exitoso
+  PrestamoService -> PrestamoService: validar disponibilidad
+  PrestamoService -> LibroRepository: save(libro no disponible)
+  LibroRepository --> PrestamoService: libro actualizado
+  PrestamoService -> PrestamoRepository: save(prestamo)
+  PrestamoRepository --> PrestamoService: prestamo guardado
+  PrestamoService --> PrestamoController: PrestamoResponse
+  PrestamoController --> Usuario: 201 Created
+end
+@enduml
